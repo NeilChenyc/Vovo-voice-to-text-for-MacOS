@@ -1,0 +1,16 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "0d60b17ed68bf5e5e5f1dd47828918f33be675ec38972f17ae9d95e25637535e"
+build_start_time: [1756036156, 882820000]
+build_end_time: [1756036159, 678436000]
+inputs:
+  ? "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/DerivedSources/GeneratedAssetSymbols.swift"
+  : [1756036156, 792716638]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/AppDelegate.swift": [1756035588, 56201708]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/AudioRecordingManager.swift": [1756034668, 635141985]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/ConfigManager.swift": [1756035588, 56228208]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/HotKeyManager.swift": [1756035588, 29784970]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/Logger.swift": [1756035588, 30238855]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/PermissionManager.swift": [1756035588, 30177270]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/StatusBarManager.swift": [1756035588, 60455425]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/TextInsertionManager.swift": [1756035588, 56941015]
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/WebSocketManager.swift": [1756036146, 335673245]

@@ -1,0 +1,60 @@
+{
+  "" : {
+    "const-values" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/vovo-master.swiftconstvalues",
+    "dependencies" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/vovo-master.d",
+    "diagnostics" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/vovo-master.dia",
+    "emit-module-dependencies" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/vovo-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/vovo-master-emit-module.dia",
+    "swift-dependencies" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/vovo-master.swiftdeps"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/GeneratedAssetSymbols.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/AppDelegate.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/AppDelegate.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/AppDelegate.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/AppDelegate.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/AudioRecordingManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/AudioRecordingManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/AudioRecordingManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/AudioRecordingManager.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/ConfigManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/ConfigManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/ConfigManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/ConfigManager.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/HotKeyManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/HotKeyManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/HotKeyManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/HotKeyManager.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/Logger.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/Logger.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/Logger.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/Logger.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/PermissionManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/PermissionManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/PermissionManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/PermissionManager.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/StatusBarManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/StatusBarManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/StatusBarManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/StatusBarManager.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/TextInsertionManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/TextInsertionManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/TextInsertionManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/TextInsertionManager.o"
+  },
+  "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/vovo/WebSocketManager.swift" : {
+    "index-unit-output-path" : "/vovo.build/Release/vovo.build/Objects-normal/x86_64/WebSocketManager.o",
+    "llvm-bc" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/WebSocketManager.bc",
+    "object" : "/Users/a99/localDocuments/codeBase/ideaWorkplace/vovo/build/vovo.build/Release/vovo.build/Objects-normal/x86_64/WebSocketManager.o"
+  }
+}
