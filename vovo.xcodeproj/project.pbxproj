@@ -16,9 +16,9 @@
 		A100000D /* TextInsertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C /* TextInsertionManager.swift */; };
 		A100000F /* StatusBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E /* StatusBarManager.swift */; };
 		A1000011 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010 /* Logger.swift */; };
-
 		A1000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000012 /* Assets.xcassets */; };
 		A1000016 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = A1000014 /* MainMenu.xib */; };
+		BBFF94D12E60A84900152C62 /* Starscream in Frameworks */ = {isa = PBXBuildFile; productRef = BBFF94D02E60A84900152C62 /* Starscream */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,7 +32,6 @@
 		A100000C /* TextInsertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInsertionManager.swift; sourceTree = "<group>"; };
 		A100000E /* StatusBarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarManager.swift; sourceTree = "<group>"; };
 		A1000010 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
-
 		A1000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000015 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		A1000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -44,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBFF94D12E60A84900152C62 /* Starscream in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -97,7 +97,6 @@
 		A100001A /* UI */ = {
 			isa = PBXGroup;
 			children = (
-
 				A1000014 /* MainMenu.xib */,
 			);
 			name = UI;
@@ -156,6 +155,9 @@
 				"zh-Hans",
 			);
 			mainGroup = A0FFFFF4;
+			packageReferences = (
+				BBFF94CF2E60A84900152C62 /* XCRemoteSwiftPackageReference "Starscream" */,
+			);
 			productRefGroup = A0FFFFFE /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -191,7 +193,6 @@
 				A100000D /* TextInsertionManager.swift in Sources */,
 				A100000F /* StatusBarManager.swift in Sources */,
 				A1000011 /* Logger.swift in Sources */,
-
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -404,6 +405,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BBFF94CF2E60A84900152C62 /* XCRemoteSwiftPackageReference "Starscream" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/daltoniam/Starscream.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.8;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BBFF94D02E60A84900152C62 /* Starscream */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BBFF94CF2E60A84900152C62 /* XCRemoteSwiftPackageReference "Starscream" */;
+			productName = Starscream;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A0FFFFF5 /* Project object */;
 }

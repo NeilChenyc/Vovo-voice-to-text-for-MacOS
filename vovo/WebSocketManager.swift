@@ -8,6 +8,7 @@
 import Foundation
 import Network
 import Compression
+import Starscream
 
 // MARK: - UInt32 Extension for Byte Conversion
 extension UInt32 {
@@ -20,9 +21,7 @@ extension UInt32 {
         ]
     }
     
-    // 修复：确保大端序字节转换正确
     var bigEndianBytes: [UInt8] {
-        // 直接从原始值转换为大端序字节，不使用.bigEndian
         return [
             UInt8((self >> 24) & 0xFF),
             UInt8((self >> 16) & 0xFF),
@@ -40,9 +39,11 @@ enum VolcanoMessageType: UInt8 {
     case errorResponse = 0b1111
 }
 
-enum VolcanoMessageFlags: UInt8 {
-    case normal = 0b0000
-    case lastAudioPacket = 0b0010
+enum VolcanoMessageTypeSpecificFlags: UInt8 {
+    case noSequence = 0b0000
+    case posSequence = 0b0001
+    case negSequence = 0b0010
+    case negWithSequence = 0b0011
 }
 
 enum VolcanoSerializationMethod: UInt8 {
@@ -59,7 +60,7 @@ struct VolcanoProtocolHeader {
     let protocolVersion: UInt8 = 0b0001
     let headerSize: UInt8 = 0b0001
     let messageType: VolcanoMessageType
-    let messageFlags: VolcanoMessageFlags
+    let messageTypeSpecificFlags: VolcanoMessageTypeSpecificFlags
     let serializationMethod: VolcanoSerializationMethod
     let compressionMethod: VolcanoCompressionMethod
     let reserved: UInt8 = 0b00000000
@@ -71,8 +72,8 @@ struct VolcanoProtocolHeader {
         let firstByte = (protocolVersion << 4) | headerSize
         data.append(firstByte)
         
-        // 第二个字节：消息类型(4位) + 消息标志(4位)
-        let secondByte = (messageType.rawValue << 4) | messageFlags.rawValue
+        // 第二个字节：消息类型(4位) + 消息类型特定标志(4位)
+        let secondByte = (messageType.rawValue << 4) | messageTypeSpecificFlags.rawValue
         data.append(secondByte)
         
         // 第三个字节：序列化方法(4位) + 压缩方法(4位)
@@ -86,15 +87,12 @@ struct VolcanoProtocolHeader {
     }
 }
 
-// Ensure ConfigManager and Logger are accessible
-// These should be part of the same module/target
 class WebSocketManager: NSObject {
     
     private let configManager = ConfigManager.shared
     private let logger = Logger.shared
     
-    private var webSocketTask: URLSessionWebSocketTask?
-    private var urlSession: URLSession?
+    private var webSocket: WebSocket?
     private var isConnected = false
     private var connectId: String = ""
     private var sequenceNumber: Int32 = 1
@@ -106,7 +104,6 @@ class WebSocketManager: NSObject {
     
     override init() {
         super.init()
-        setupURLSession()
         generateConnectId()
     }
     
@@ -149,10 +146,16 @@ class WebSocketManager: NSObject {
         
         logger.websocket("设置认证头 - AppKey: \(config.appKey.prefix(8))..., ConnectId: \(connectId.prefix(8))...")
         
-        webSocketTask = urlSession?.webSocketTask(with: request)
-        webSocketTask?.resume()
+        // 创建Starscream WebSocket
+        webSocket = WebSocket(request: request)
+        webSocket?.delegate = self
         
-        logger.websocket("WebSocket任务已启动")
+        // 配置WebSocket以正确处理二进制数据
+        webSocket?.callbackQueue = DispatchQueue(label: "websocket.queue")
+        
+        webSocket?.connect()
+        
+        logger.websocket("Starscream WebSocket连接已启动")
         logger.websocketConnection("正在连接", url: config.websocketURL)
     }
     
@@ -164,8 +167,8 @@ class WebSocketManager: NSObject {
         
         logger.websocket("开始断开WebSocket连接")
         
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
+        webSocket?.disconnect()
+        webSocket = nil
         isConnected = false
         onConnectionStatusChanged?(false)
         
@@ -179,17 +182,14 @@ class WebSocketManager: NSObject {
         }
         
         logger.websocketSend("音频数据", size: audioData.count)
+        logger.websocket("调试: 传入audioData大小 = \(audioData.count) bytes")
         
         let binaryMessage = createAudioMessage(audioData)
+        logger.websocket("调试: 构造的binaryMessage大小 = \(binaryMessage.count) bytes")
         logger.logDataPacket(direction: "发送", type: "音频消息", data: binaryMessage)
         
-        webSocketTask?.send(.data(binaryMessage)) { error in
-            if let error = error {
-                self.logger.websocketError("发送音频数据失败: \(error.localizedDescription)")
-                self.onError?(error)
-            } else {
-                self.logger.websocket("音频数据发送成功，大小: \(audioData.count) bytes")
-            }
+        webSocket?.write(data: binaryMessage) { [weak self] in
+            self?.logger.websocket("音频数据发送成功，大小: \(audioData.count) bytes")
         }
     }
     
@@ -204,14 +204,10 @@ class WebSocketManager: NSObject {
         let endMessage = createEndMessage()
         logger.logDataPacket(direction: "发送", type: "结束消息", data: endMessage)
         
-        webSocketTask?.send(.data(endMessage)) { error in
-            if let error = error {
-                self.logger.websocketError("发送结束消息失败: \(error.localizedDescription)")
-            } else {
-                self.logger.websocket("录音结束信号发送成功")
-                // 重置录音状态
-                self.hasStartedRecording = false
-            }
+        webSocket?.write(data: endMessage) { [weak self] in
+            self?.logger.websocket("录音结束信号发送成功")
+            // 重置录音状态
+            self?.hasStartedRecording = false
         }
     }
     
@@ -232,13 +228,6 @@ class WebSocketManager: NSObject {
     }
     
     // MARK: - Private Methods
-    
-    private func setupURLSession() {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        urlSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-    }
     
     private func generateConnectId() {
         connectId = UUID().uuidString
@@ -275,33 +264,6 @@ class WebSocketManager: NSObject {
             
             guard decompressedSize > 0 else { return nil }
             return Data(bytes: buffer, count: decompressedSize)
-        }
-    }
-    
-    private func startReceiving() {
-        webSocketTask?.receive { [weak self] result in
-            switch result {
-            case .success(let message):
-                self?.logger.websocket("收到WebSocket消息")
-                self?.handleReceivedMessage(message)
-                self?.startReceiving() // 继续接收下一条消息
-            case .failure(let error):
-                self?.logger.websocketError("接收消息失败: \(error.localizedDescription)")
-                self?.onError?(error)
-            }
-        }
-    }
-    
-    private func handleReceivedMessage(_ message: URLSessionWebSocketTask.Message) {
-        switch message {
-        case .data(let data):
-            logger.websocketReceive("二进制数据", size: data.count)
-            logger.logDataPacket(direction: "接收", type: "二进制消息", data: data)
-            handleBinaryMessage(data)
-        case .string(let text):
-            logger.websocketReceive("文本消息", size: text.count, content: text)
-        @unknown default:
-            logger.websocket("收到未知类型消息")
         }
     }
     
@@ -416,15 +378,8 @@ class WebSocketManager: NSObject {
         let requestData = createInitialRequest()
         logger.logDataPacket(direction: "发送", type: "初始化请求", data: requestData)
         
-        webSocketTask?.send(.data(requestData)) { [weak self] error in
-            if let error = error {
-                self?.logger.websocketError("发送初始化请求失败: \(error.localizedDescription)")
-                // 错误已通过logger.websocketError记录
-                self?.onError?(error)
-            } else {
-                self?.logger.websocket("初始请求已发送")
-                // 连接状态已在didOpenWithProtocol中设置
-            }
+        webSocket?.write(data: requestData) { [weak self] in
+            self?.logger.websocket("初始请求已发送")
         }
     }
     
@@ -478,7 +433,7 @@ class WebSocketManager: NSObject {
         // 测试Full Client Request头
         let fullRequestHeader = VolcanoProtocolHeader(
             messageType: .fullClientRequest,
-            messageFlags: .normal,
+            messageTypeSpecificFlags: .noSequence,
             serializationMethod: .json,
             compressionMethod: .none
         )
@@ -487,14 +442,14 @@ class WebSocketManager: NSObject {
         logger.websocket("  - 协议版本: \(fullRequestHeader.protocolVersion) (0b\(String(fullRequestHeader.protocolVersion, radix: 2)))")
         logger.websocket("  - 头部大小: \(fullRequestHeader.headerSize) (0b\(String(fullRequestHeader.headerSize, radix: 2)))")
         logger.websocket("  - 消息类型: \(fullRequestHeader.messageType.rawValue) (0b\(String(fullRequestHeader.messageType.rawValue, radix: 2)))")
-        logger.websocket("  - 消息标志: \(fullRequestHeader.messageFlags.rawValue) (0b\(String(fullRequestHeader.messageFlags.rawValue, radix: 2)))")
+        logger.websocket("  - 消息类型特定标志: \(fullRequestHeader.messageTypeSpecificFlags.rawValue) (0b\(String(fullRequestHeader.messageTypeSpecificFlags.rawValue, radix: 2)))")
         logger.websocket("  - 序列化方法: \(fullRequestHeader.serializationMethod.rawValue) (0b\(String(fullRequestHeader.serializationMethod.rawValue, radix: 2)))")
         logger.websocket("  - 压缩方法: \(fullRequestHeader.compressionMethod.rawValue) (0b\(String(fullRequestHeader.compressionMethod.rawValue, radix: 2)))")
         
         // 测试Audio Only Request头
         let audioOnlyHeader = VolcanoProtocolHeader(
             messageType: .audioOnlyRequest,
-            messageFlags: .normal,
+            messageTypeSpecificFlags: .noSequence,
             serializationMethod: .none,
             compressionMethod: .none
         )
@@ -512,9 +467,9 @@ class WebSocketManager: NSObject {
         // 使用结构化的协议头 - 与参考实现保持一致
         let header = VolcanoProtocolHeader(
             messageType: .fullClientRequest,
-            messageFlags: .normal,
+            messageTypeSpecificFlags: .posSequence,  // 修复：使用正序列号标志
             serializationMethod: .json,
-            compressionMethod: .none  // 不使用压缩，与参考实现一致
+            compressionMethod: .gzip  // 修复：使用GZIP压缩
         )
         
         var messageData = Data()
@@ -523,19 +478,35 @@ class WebSocketManager: NSObject {
         let headerData = header.toData()
         messageData.append(headerData)
         
-        // 添加payload大小（4字节，大端序）
-        let payloadSize = UInt32(payload.count)
-        let payloadSizeBytes = payloadSize.bigEndianBytes
-        messageData.append(contentsOf: payloadSizeBytes)
+        // 添加序列号（4字节，大端序）
+        let currentSeq = Int32(sequenceNumber)
+        let seqBytes = withUnsafeBytes(of: currentSeq.bigEndian) { Data($0) }
+        messageData.append(seqBytes)
+        sequenceNumber += 1
         
-        // 添加JSON payload（不压缩）
-        messageData.append(payload)
+        // 压缩payload
+        let compressedPayload: Data
+        if let compressed = gzipCompress(payload) {
+            compressedPayload = compressed
+        } else {
+            logger.warning("JSON压缩失败，使用原始数据")
+            compressedPayload = payload
+        }
+        
+        // 添加payload大小（4字节，大端序）
+        let payloadSize = UInt32(compressedPayload.count)
+        let payloadSizeBytes = withUnsafeBytes(of: payloadSize.bigEndian) { Data($0) }
+        messageData.append(payloadSizeBytes)
+        
+        // 添加压缩后的JSON payload
+        messageData.append(compressedPayload)
         
         // 详细的二进制数据日志记录
         logger.websocket("=== 构造Full Client Request ===")
         logger.websocket("协议头(4字节): \(headerData.map { String(format: "%02x", $0) }.joined(separator: " "))")
+        logger.websocket("序列号(4字节): \(seqBytes.map { String(format: "%02x", $0) }.joined(separator: " ")) (值: \(currentSeq))")
         logger.websocket("Payload大小(4字节): \(payloadSizeBytes.map { String(format: "%02x", $0) }.joined(separator: " ")) (值: \(payloadSize))")
-        logger.websocket("JSON Payload(\(payload.count)字节): \(String(data: payload, encoding: .utf8) ?? "无法解析为UTF-8")")
+        logger.websocket("JSON Payload压缩: \(payload.count) -> \(compressedPayload.count) 字节")
         logger.websocket("完整消息(\(messageData.count)字节): \(messageData.prefix(32).map { String(format: "%02x", $0) }.joined(separator: " "))\(messageData.count > 32 ? "..." : "")")
         
         return messageData
@@ -550,9 +521,9 @@ class WebSocketManager: NSObject {
         // 使用结构化的协议头 - audio only request
         let header = VolcanoProtocolHeader(
             messageType: .audioOnlyRequest,
-            messageFlags: .normal,
+            messageTypeSpecificFlags: .posSequence,  // 修复：使用正序列号标志
             serializationMethod: .none,  // 二进制序列化
-            compressionMethod: .none     // 不使用压缩，与参考实现一致
+            compressionMethod: .gzip     // 修复：使用GZIP压缩
         )
         
         var messageData = Data()
@@ -560,25 +531,41 @@ class WebSocketManager: NSObject {
         // 添加协议头（4字节）
         messageData.append(header.toData())
         
+        // 添加序列号（4字节，大端序）
+        let currentSeq = Int32(sequenceNumber)
+        let seqBytes = withUnsafeBytes(of: currentSeq.bigEndian) { Data($0) }
+        messageData.append(seqBytes)
+        sequenceNumber += 1
+        
+        // 压缩音频数据
+        let compressedAudio: Data
+        if let compressed = gzipCompress(audioData) {
+            compressedAudio = compressed
+        } else {
+            logger.warning("音频数据压缩失败，使用原始数据")
+            compressedAudio = audioData
+        }
+        
         // 添加payload大小（4字节，大端序）
-        let payloadSize = UInt32(audioData.count)
-        messageData.append(contentsOf: payloadSize.bigEndianBytes)
+        let payloadSize = UInt32(compressedAudio.count)
+        let payloadSizeBytes = withUnsafeBytes(of: payloadSize.bigEndian) { Data($0) }
+        messageData.append(payloadSizeBytes)
         
-        // 添加音频数据（不压缩）
-        messageData.append(audioData)
+        // 添加压缩后的音频数据
+        messageData.append(compressedAudio)
         
-        logger.websocket("构建audio only request: header=4字节, payload大小=\(audioData.count)字节")
+        logger.websocket("构建audio only request: header=4字节, 序列号=\(currentSeq), 音频数据压缩: \(audioData.count) -> \(compressedAudio.count) 字节")
         
         return messageData
     }
     
     private func createEndMessage() -> Data {
-        // 结束消息使用audio only格式，但payload为空，并设置lastAudioPacket标志
+        // 结束消息使用audio only格式，但payload为空，并设置negWithSequence标志
         let header = VolcanoProtocolHeader(
             messageType: .audioOnlyRequest,
-            messageFlags: .lastAudioPacket,  // 标记为最后一个音频包
+            messageTypeSpecificFlags: .negWithSequence,  // 修复：使用负序列号标志表示最后一包
             serializationMethod: .none,
-            compressionMethod: .none
+            compressionMethod: .gzip
         )
         
         var messageData = Data()
@@ -586,94 +573,21 @@ class WebSocketManager: NSObject {
         // 添加协议头（4字节）
         messageData.append(header.toData())
         
+        // 添加负序列号（4字节，大端序）
+        let negativeSeq = Int32(-sequenceNumber)  // 修复：使用负序列号表示结束
+        let seqBytes = withUnsafeBytes(of: negativeSeq.bigEndian) { Data($0) }
+        messageData.append(seqBytes)
+        
         // Payload size为0 (4字节，大端序)
         let payloadSize: UInt32 = 0
-        messageData.append(contentsOf: payloadSize.bigEndianBytes)
+        let payloadSizeBytes = withUnsafeBytes(of: payloadSize.bigEndian) { Data($0) }
+        messageData.append(payloadSizeBytes)
         
         // 无payload
         
-        logger.websocket("构建结束消息: header=4字节, payload大小=0字节")
+        logger.websocket("构建结束消息: header=4字节, 负序列号=\(negativeSeq), payload大小=0字节")
         
         return messageData
-    }
-    
-    private func createBinaryMessage(messageType: UInt8, messageFlags: UInt8 = 0, payload: Data) -> Data {
-        var message = Data()
-        
-        // 根据火山引擎API文档，协议格式严格按照规范：
-        // 4字节固定header + [可选header扩展] + 4字节payload size + payload
-        
-        let protocolVersion: UInt8 = 0b0001 // V1
-        // 根据API文档：初始请求使用JSON序列化(0b0001)，音频数据使用二进制序列化(0b0000)
-        let serializationMethod: UInt8
-        if messageType == 1 { // 初始请求使用JSON序列化
-            serializationMethod = 0b0001
-        } else { // 音频数据和结束消息使用二进制序列化
-            serializationMethod = 0b0000
-        }
-        // 初始请求 (messageType == 1) 和音频数据 (messageType == 0b0010) 都使用 GZIP 压缩，与官方 Python 示例保持一致
-        let compression: UInt8
-        if messageType == 1 || messageType == 0b0010 {
-            compression = 0b0001 // GZIP
-        } else {
-            compression = 0b0000 // 不压缩
-        }
-        
-        // 检查是否需要序列号（header扩展）
-        let hasSequenceNumber = (messageFlags == 0b0001 || messageFlags == 0b0011)
-        // Python示例中header size固定为1（表示4字节header），序列号单独添加
-        let headerSize: UInt8 = 0b0001 // 固定为1，表示4字节header
-        
-        // 构建4字节固定header（与Python示例完全一致）
-        let byte0 = (protocolVersion << 4) | headerSize
-        let byte1 = (messageType << 4) | messageFlags
-        let byte2 = (serializationMethod << 4) | compression
-        let byte3: UInt8 = 0 // Reserved
-        
-        message.append(byte0)
-        message.append(byte1)
-        message.append(byte2)
-        message.append(byte3)
-        
-        // 如果需要序列号，在header后添加4字节序列号（与Python示例一致）
-        if hasSequenceNumber {
-            let currentSeq: Int32
-            if messageFlags == 0b0011 { // NEG_WITH_SEQUENCE (最后一包)
-                currentSeq = -sequenceNumber
-            } else {
-                currentSeq = sequenceNumber
-            }
-            
-            let seqBytes = withUnsafeBytes(of: currentSeq.bigEndian) { Data($0) }
-            message.append(seqBytes)
-            
-            // 递增序列号
-            sequenceNumber += 1
-        }
-        
-        // 处理payload压缩
-        var finalPayload = payload
-        if !payload.isEmpty && compression == 0b0001 {
-            if let compressedPayload = gzipCompress(payload) {
-                finalPayload = compressedPayload
-                logger.websocket("Payload压缩: \(payload.count) -> \(compressedPayload.count) bytes")
-            } else {
-                logger.warning("Payload压缩失败，使用原始数据")
-            }
-        }
-        
-        // Payload size (4 bytes, big-endian unsigned integer)
-        let payloadSize = UInt32(finalPayload.count)
-        let payloadSizeBytes = withUnsafeBytes(of: payloadSize.bigEndian) { Data($0) }
-        message.append(payloadSizeBytes)
-        
-        // Payload
-        message.append(finalPayload)
-        
-        let seqInfo = hasSequenceNumber ? ", 序列号=\(hasSequenceNumber ? (messageFlags == 0b0011 ? -sequenceNumber + 1 : sequenceNumber - 1) : 0)" : ""
-        logger.websocket("构建二进制消息: 类型=\(messageType), 标志=\(messageFlags), header大小=\(headerSize*4)字节\(seqInfo), payload大小=\(finalPayload.count)")
-        
-        return message
     }
     
     deinit {
@@ -681,38 +595,54 @@ class WebSocketManager: NSObject {
     }
 }
 
-// MARK: - URLSessionWebSocketDelegate
+// MARK: - WebSocketDelegate (Starscream)
 
-extension WebSocketManager: URLSessionWebSocketDelegate {
+extension WebSocketManager: WebSocketDelegate {
     
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        logger.websocketConnection("WebSocket连接已建立")
-        logger.info("WebSocket连接成功，协议: \(`protocol` ?? "未知")")
-        isConnected = true
-        onConnectionStatusChanged?(true)
-        
-        // 连接建立后开始接收消息
-        logger.websocket("开始接收消息")
-        startReceiving()
-    }
-    
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        let reasonString = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "无原因"
-        logger.websocketConnection("WebSocket连接已关闭")
-        logger.warning("WebSocket连接关闭，代码: \(closeCode.rawValue)，原因: \(reasonString)")
-        isConnected = false
-        hasStartedRecording = false
-        onConnectionStatusChanged?(false)
-    }
-    
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error = error {
-            logger.websocketError("WebSocket任务完成时发生错误: \(error.localizedDescription)")
-            logger.error("WebSocket任务错误: \(error)")
+    func didReceive(event: WebSocketEvent, client: WebSocketClient) {
+        switch event {
+        case .connected(let headers):
+            logger.websocketConnection("WebSocket连接已建立")
+            logger.info("WebSocket连接成功，headers: \(headers)")
+            isConnected = true
+            onConnectionStatusChanged?(true)
+            
+            // 连接建立后开始接收消息处理在connected事件中
+            logger.websocket("WebSocket连接就绪，等待开始录音")
+            
+        case .disconnected(let reason, let code):
+            logger.websocketConnection("WebSocket连接已关闭")
+            logger.warning("WebSocket连接关闭，code: \(code)，reason: \(reason)")
             isConnected = false
             hasStartedRecording = false
             onConnectionStatusChanged?(false)
-            onError?(error)
+            
+        case .text(let text):
+            logger.websocketReceive("文本消息", size: text.count, content: text)
+            
+        case .binary(let data):
+            logger.websocketReceive("二进制数据", size: data.count)
+            logger.logDataPacket(direction: "接收", type: "二进制消息", data: data)
+            handleBinaryMessage(data)
+            
+        case .error(let error):
+            if let error = error {
+                logger.websocketError("WebSocket错误: \(error.localizedDescription)")
+                logger.error("WebSocket错误详情: \(error)")
+                isConnected = false
+                hasStartedRecording = false
+                onConnectionStatusChanged?(false)
+                onError?(error)
+            }
+            
+        case .cancelled:
+            logger.websocket("WebSocket连接被取消")
+            isConnected = false
+            hasStartedRecording = false
+            onConnectionStatusChanged?(false)
+            
+        default:
+            logger.websocket("收到其他WebSocket事件: \(event)")
         }
     }
 }
